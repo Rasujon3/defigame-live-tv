@@ -193,4 +193,44 @@ class FavouriteController extends Controller
             ], 500);
         }
     }
+    public function addRemoveFavourite(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer',
+            'channel_id' => 'required|string',
+            'param' => 'required|in:add,remove',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'statusCode' => 422,
+                'message' => 'The given data was invalid',
+                'data' => $validator->errors()
+            ], 422);
+        }
+        try {
+            if ($request->param === 'add') {
+                // Call store method
+                return $this->store($request);
+            } else {
+                // Call destroy method
+                return $this->destroy($request);
+            }
+        } catch (Exception $e) {
+            // Log the error
+            Log::error('Error in addRemoveFavourite: ', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'statusCode' => 500,
+                'message' => 'Something went wrong!!!',
+                'data' => []
+            ], 500);
+        }
+    }
 }

@@ -16,6 +16,7 @@ class TvController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
+            'param' => 'required|in:all,fav',
         ]);
 
         if ($validator->fails()) {
@@ -29,35 +30,13 @@ class TvController extends Controller
 
         try {
             $userId = $request->user_id;
+            $params = $request->param;
 
-            // 1. Get user's favourite channel IDs
-            $favouriteChannelIds = Favourite::where('user_id', $userId)
-                ->pluck('channel_id')
-                ->toArray();
-
-            // 2. Get TV list
-            $tvs = Tv::where('status', 1)
-                ->get()
-                ->map(function ($tv) use ($favouriteChannelIds) {
-
-                    return [
-                        'id' => $tv->id,
-                        'name' => $tv->name,
-                        'channel_id' => $tv->channel_id,
-                        'img_url' => $tv->img_url,
-                        'status' => $tv->status,
-
-                        // ⭐ is_fav flag
-                        'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
-                    ];
-                });
-
-            return response()->json([
-                'status' => true,
-                'statusCode' => 200,
-                'message' => 'TV list retrieved successfully',
-                'data' => $tvs
-            ]);
+            if ($params === 'all') {
+                return $this->allTvData($userId);
+            } else {
+                return $this->favTvData($userId);
+            }
         } catch (Exception $e) {
             // Log the error
             Log::error('Error in retrieving TV: ', [
@@ -286,6 +265,77 @@ class TvController extends Controller
                 Log::warning('Old file not found for deletion', ['path' => $oldFilePath]);
                 return false;
             }
+        }
+    }
+    private function allTvData($userId)
+    {
+        // 1. Get user's favourite channel IDs
+        $favouriteChannelIds = Favourite::where('user_id', $userId)
+            ->pluck('channel_id')
+            ->toArray();
+
+        // 2. Get TV list
+        $tvs = Tv::where('status', 1)
+            ->get()
+            ->map(function ($tv) use ($favouriteChannelIds) {
+
+                return [
+                    'id' => $tv->id,
+                    'name' => $tv->name,
+                    'channel_id' => $tv->channel_id,
+                    'img_url' => $tv->img_url,
+                    'status' => $tv->status,
+
+                    // ⭐ is_fav flag
+                    'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'statusCode' => 200,
+            'message' => 'TV list retrieved successfully',
+            'data' => $tvs
+        ]);
+    }
+    private function favTvData($userId)
+    {
+        try {
+            $favourites = Favourite::where('user_id', $userId)
+                ->latest()
+                ->get('tv_id');
+
+            if (empty($favourites)) {
+                return response()->json([
+                    'status' => false,
+                    'statusCode' => 404,
+                    'message' => 'No favourites found',
+                    'data' => []
+                ], 404);
+            }
+
+            $data = Tv::whereIn('id', $favourites->pluck('tv_id'))->get();
+
+            return response()->json([
+                'status' => true,
+                'statusCode' => 200,
+                'message' => 'Favourite list retrieved successfully',
+                'data' => $data
+            ]);
+        } catch (Exception $e) {
+            // Log the error
+            Log::error('Error in retrieving Favourite: ', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'statusCode' => 500,
+                'message' => 'Something went wrong!!!',
+                'data' => []
+            ], 500);
         }
     }
 }

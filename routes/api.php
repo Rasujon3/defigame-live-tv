@@ -47,6 +47,8 @@ Route::post('/favourites/add', [FavouriteController::class, 'store']);
 
 Route::post('/favourites/remove', [FavouriteController::class, 'destroy']);
 
+Route::post('/favourites/add-remove', [FavouriteController::class, 'addRemoveFavourite']);
+
 
 Route::get('/clear-cache', function () {
     Artisan::call('config:clear');
