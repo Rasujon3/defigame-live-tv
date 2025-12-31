@@ -314,7 +314,27 @@ class TvController extends Controller
                 ], 404);
             }
 
-            $data = Tv::whereIn('id', $favourites->pluck('tv_id'))->get();
+            # $data = Tv::whereIn('id', $favourites->pluck('tv_id'))->get();
+
+            $favouriteChannelIds = Favourite::where('user_id', $userId)
+                ->pluck('channel_id')
+                ->toArray();
+
+            $data = Tv::whereIn('id', $favourites->pluck('tv_id'))
+                ->get()
+                ->map(function ($tv) use ($favouriteChannelIds) {
+
+                    return [
+                        'id' => $tv->id,
+                        'name' => $tv->name,
+                        'channel_id' => $tv->channel_id,
+                        'img_url' => $tv->img_url,
+                        'status' => $tv->status,
+
+                        // ⭐ is_fav flag
+                        'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
+                    ];
+                });
 
             return response()->json([
                 'status' => true,
