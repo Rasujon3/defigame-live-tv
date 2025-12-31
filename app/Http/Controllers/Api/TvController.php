@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Favourite;
 use App\Models\Tv;
 use Exception;
 use Illuminate\Http\Request;
@@ -11,10 +12,45 @@ use Illuminate\Support\Facades\Validator;
 
 class TvController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'statusCode' => 422,
+                'message' => 'The given data was invalid',
+                'data' => $validator->errors()
+            ], 422);
+        }
+
         try {
-            $tvs = Tv::where('status', 1)->get();
+            $userId = $request->user_id;
+
+            // 1. Get user's favourite channel IDs
+            $favouriteChannelIds = Favourite::where('user_id', $userId)
+                ->pluck('channel_id')
+                ->toArray();
+
+            // 2. Get TV list
+            $tvs = Tv::where('status', 1)
+                ->get()
+                ->map(function ($tv) use ($favouriteChannelIds) {
+
+                    return [
+                        'id' => $tv->id,
+                        'name' => $tv->name,
+                        'channel_id' => $tv->channel_id,
+                        'img_url' => $tv->img_url,
+                        'status' => $tv->status,
+
+                        // ⭐ is_fav flag
+                        'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
+                    ];
+                });
 
             return response()->json([
                 'status' => true,
@@ -23,13 +59,11 @@ class TvController extends Controller
                 'data' => $tvs
             ]);
         } catch (Exception $e) {
-
             // Log the error
             Log::error('Error in retrieving TV: ', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'line' => $e->getLine()
             ]);
 
             return response()->json([

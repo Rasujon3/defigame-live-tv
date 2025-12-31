@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\FavouriteController;
 use App\Http\Controllers\Api\TvController;
 use App\Http\Controllers\Api\YoutubeApiKeyController;
 use App\Http\Controllers\Api\YoutubeController;
@@ -38,6 +39,13 @@ Route::post('/update/tv', [TvController::class, 'update']);
 Route::get('/youtube-api-keys', [YoutubeApiKeyController::class, 'index']);
 Route::post('/youtube-api-keys', [YoutubeApiKeyController::class, 'store']);
 Route::get('/activate-all', [YoutubeApiKeyController::class, 'activateAll']);
+
+// Favorite
+Route::get('/favourites', [FavouriteController::class, 'index']);
+
+Route::post('/favourites/add', [FavouriteController::class, 'store']);
+
+Route::post('/favourites/remove', [FavouriteController::class, 'destroy']);
 
 
 Route::get('/clear-cache', function () {
