@@ -269,34 +269,51 @@ class TvController extends Controller
     }
     private function allTvData($userId)
     {
-        // 1. Get user's favourite channel IDs
-        $favouriteChannelIds = Favourite::where('user_id', $userId)
-            ->pluck('channel_id')
-            ->toArray();
+        try {
+            // 1. Get user's favourite channel IDs
+            $favouriteChannelIds = Favourite::where('user_id', $userId)
+                ->pluck('channel_id')
+                ->toArray();
 
-        // 2. Get TV list
-        $tvs = Tv::where('status', 1)
-            ->get()
-            ->map(function ($tv) use ($favouriteChannelIds) {
+            // 2. Get TV list
+            $tvs = Tv::where('status', 1)
+                ->orderBy('name', 'asc')
+                ->get()
+                ->map(function ($tv) use ($favouriteChannelIds) {
 
-                return [
-                    'id' => $tv->id,
-                    'name' => $tv->name,
-                    'channel_id' => $tv->channel_id,
-                    'img_url' => $tv->img_url,
-                    'status' => $tv->status,
+                    return [
+                        'id' => $tv->id,
+                        'name' => $tv->name,
+                        'channel_id' => $tv->channel_id,
+                        'img_url' => $tv->img_url,
+                        'status' => $tv->status,
 
-                    // ⭐ is_fav flag
-                    'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
-                ];
-            });
+                        // ⭐ is_fav flag
+                        'is_fav' => in_array($tv->channel_id, $favouriteChannelIds),
+                    ];
+                });
 
-        return response()->json([
-            'status' => true,
-            'statusCode' => 200,
-            'message' => 'TV list retrieved successfully',
-            'data' => $tvs
-        ]);
+            return response()->json([
+                'status' => true,
+                'statusCode' => 200,
+                'message' => 'TV list retrieved successfully',
+                'data' => $tvs
+            ]);
+        } catch (Exception $e) {
+            // Log the error
+            Log::error('Error in retrieving allTvData: ', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'statusCode' => 500,
+                'message' => 'Something went wrong!!!',
+                'data' => []
+            ], 500);
+        }
     }
     private function favTvData($userId)
     {
@@ -321,6 +338,7 @@ class TvController extends Controller
                 ->toArray();
 
             $data = Tv::whereIn('id', $favourites->pluck('tv_id'))
+                ->orderBy('name', 'asc')
                 ->get()
                 ->map(function ($tv) use ($favouriteChannelIds) {
 
@@ -344,7 +362,7 @@ class TvController extends Controller
             ]);
         } catch (Exception $e) {
             // Log the error
-            Log::error('Error in retrieving Favourite: ', [
+            Log::error('Error in retrieving favTvData: ', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'line' => $e->getLine()
